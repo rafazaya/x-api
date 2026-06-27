@@ -85,4 +85,9 @@ Once configured, Claude can:
 - `"Python asyncio"`
 - `"from:karpathy -is:retweet"`
 
+**Search the full tweet archive** by topic or keyword:
+- `"from:kepano Obsidian -is:retweet"`
+- Use optional `start_time` and `end_time` ISO 8601 bounds for narrower searches
+- Use sparingly; this calls X's full-archive search endpoint and may be more expensive than recent search
+
 Both tools return the tweet's author, text, date, and engagement stats (likes, retweets, replies, quotes).

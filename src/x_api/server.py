@@ -5,7 +5,7 @@ import os
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
 
-from x_api.client import read_tweet, search_tweets
+from x_api.client import read_tweet, search_all_tweets, search_tweets
 
 # Load bearer token from env file
 load_dotenv(os.path.expanduser("~/.config/x-api/.env"))
@@ -61,6 +61,50 @@ async def search_tweets_tool(query: str, max_results: int = 10) -> str:
         tweets = await search_tweets(query, BEARER_TOKEN, max_results)
     except Exception as e:
         return f"Error searching tweets: {e}"
+
+    if not tweets:
+        return "No tweets found for that query."
+
+    parts = []
+    for tweet in tweets:
+        parts.append(
+            f"@{tweet.author_handle} ({tweet.author_name})\n"
+            f"{tweet.created_at}\n\n"
+            f"{tweet.text}\n\n"
+            f"Likes: {tweet.likes} | Retweets: {tweet.retweets} | "
+            f"Replies: {tweet.replies} | Quotes: {tweet.quotes}\n"
+            f"{tweet.url}"
+        )
+    return "\n\n---\n\n".join(parts)
+
+
+@mcp.tool()
+async def search_all_tweets_tool(
+    query: str,
+    max_results: int = 10,
+    start_time: str | None = None,
+    end_time: str | None = None,
+) -> str:
+    """Search the full X.com tweet archive by topic or keyword.
+
+    Uses the X API v2 full-archive search endpoint. This may cost more than
+    recent search, so use it sparingly and prefer narrow queries with date
+    bounds when possible. Supports the full query syntax including operators
+    like `from:`, `has:media`, `-is:retweet`, etc.
+
+    Args:
+        query: Search query (e.g. "from:kepano Obsidian -is:retweet")
+        max_results: Number of results to return (10-100, default 10)
+        start_time: Optional ISO 8601 start time, e.g. "2026-01-01T00:00:00Z"
+        end_time: Optional ISO 8601 end time, e.g. "2026-06-01T00:00:00Z"
+    """
+    if not BEARER_TOKEN:
+        return "Error: X_BEARER_TOKEN not set. Check ~/.config/x-api/.env"
+
+    try:
+        tweets = await search_all_tweets(query, BEARER_TOKEN, max_results, start_time, end_time)
+    except Exception as e:
+        return f"Error searching full archive: {e}"
 
     if not tweets:
         return "No tweets found for that query."
