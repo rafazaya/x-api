@@ -90,4 +90,81 @@ Once configured, Claude can:
 - Use optional `start_time` and `end_time` ISO 8601 bounds for narrower searches
 - Use sparingly; this calls X's full-archive search endpoint and may be more expensive than recent search
 
-Both tools return the tweet's author, text, date, and engagement stats (likes, retweets, replies, quotes).
+These tools return the tweet's author, text, date, and engagement stats (likes, retweets, replies, quotes).
+
+**List bookmarks** for an authorized account (see below):
+- `list_bookmarks_tool(account="<username>", max_results=20)`
+- `account` can be omitted when only one account is authorized
+
+## Bookmarks (OAuth 2.0 user context)
+
+The bearer token can't read bookmarks; X requires a token issued for the account itself. Any number of accounts can authorize the same app.
+
+### Console setup (one-time)
+
+In the developer console, open your app → **User authentication settings** → **Set up**:
+
+- App permissions: **Read**
+- Type of App: **Native App** (public client, PKCE, no client secret)
+- Callback URI: `http://127.0.0.1:8723/callback`
+- Website URL: anything, e.g. this repo
+
+Save, then add the **Client ID** to the env file:
+
+```bash
+echo "X_CLIENT_ID=your-client-id" >> ~/.config/x-api/.env
+```
+
+### Authorize an account
+
+```bash
+uv run python -m x_api.auth login   # prints a URL; open it signed into the account
+uv run python -m x_api.auth list    # show authorized accounts
+```
+
+The browser must be signed into the account you want to authorize. Repeat per account, switching accounts (or using a private window) in between. Tokens are saved to `~/.config/x-api/tokens/<username>.json` (mode 600).
+
+The callback goes to `127.0.0.1` on the machine running the browser, so if the browser is on another machine, tunnel the port first:
+
+```bash
+ssh -L 8723:127.0.0.1:8723 user@server
+```
+
+Access tokens last 2 hours and are refreshed automatically. X rotates the refresh token on every refresh; refreshes hold a per-account lock and save the new token atomically, so the MCP server and the sync job can run side by side. If a refresh ever fails, run `login` again for that account.
+
+### Sync bookmarks to a markdown file
+
+`x_api.sync_bookmarks` appends new bookmarks from every authorized account to a markdown file, one entry per bookmark with the author, date, link, and full text. It only fetches and dedupes, with no classification, so it is safe to run unattended.
+
+```bash
+echo "X_BOOKMARKS_FILE=/path/to/Social bookmarks.md" >> ~/.config/x-api/.env
+uv run python -m x_api.sync_bookmarks            # or --dry-run to only count new items
+```
+
+Seen IDs are kept in `~/.local/state/x-api/bookmarks.json`. Each run reads 10 bookmarks per account and pages further only when all of them are new, up to `X_BOOKMARKS_MAX_PAGES` pages (default 3). X only exposes an account's 800 most recent bookmarks.
+
+Example systemd user units for a daily run:
+
+```ini
+# ~/.config/systemd/user/x-bookmarks-sync.service
+[Unit]
+Description=Sync X bookmarks
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/uv run --directory /path/to/x-api python -m x_api.sync_bookmarks
+
+# ~/.config/systemd/user/x-bookmarks-sync.timer
+[Timer]
+OnCalendar=*-*-* 07:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+systemctl --user enable --now x-bookmarks-sync.timer
+```
