@@ -143,28 +143,10 @@ uv run python -m x_api.sync_bookmarks            # or --dry-run to only count ne
 
 Seen IDs are kept in `~/.local/state/x-api/bookmarks.json`. Each run reads 10 bookmarks per account and pages further only when all of them are new, up to `X_BOOKMARKS_MAX_PAGES` pages (default 3). X only exposes an account's 800 most recent bookmarks.
 
-Example systemd user units for a daily run:
-
-```ini
-# ~/.config/systemd/user/x-bookmarks-sync.service
-[Unit]
-Description=Sync X bookmarks
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=oneshot
-ExecStart=%h/.local/bin/uv run --directory /path/to/x-api python -m x_api.sync_bookmarks
-
-# ~/.config/systemd/user/x-bookmarks-sync.timer
-[Timer]
-OnCalendar=*-*-* 07:00:00
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
+### Run it daily (systemd)
 
 ```bash
-systemctl --user enable --now x-bookmarks-sync.timer
+uv run python -m x_api.timer install
 ```
+
+This writes `x-bookmarks-sync.service` and `x-bookmarks-sync.timer` into `~/.config/systemd/user/`, with this checkout's path and `uv`'s location filled in, then enables the timer (daily at about 07:00, catching up after downtime). It is safe to re-run, for example after moving the repo. Logs: `journalctl --user -u x-bookmarks-sync`.
