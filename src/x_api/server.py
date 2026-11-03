@@ -12,6 +12,8 @@ from x_api.client import Tweet, list_bookmarks, read_tweet, search_all_tweets, s
 load_dotenv(os.path.expanduser("~/.config/x-api/.env"))
 
 BEARER_TOKEN = os.environ.get("X_BEARER_TOKEN", "")
+# With X_API_BASE pointing at a credential broker, no local token is needed.
+HAVE_APP_AUTH = bool(BEARER_TOKEN or os.environ.get("X_API_BASE"))
 
 mcp = FastMCP("x-api", instructions="Read tweets from X.com by URL or ID.")
 
@@ -36,8 +38,8 @@ async def read_tweet_tool(url_or_id: str) -> str:
         url_or_id: A full X.com/Twitter URL (e.g. https://x.com/user/status/123)
                    or a raw tweet ID (e.g. 123456789)
     """
-    if not BEARER_TOKEN:
-        return "Error: X_BEARER_TOKEN not set. Check ~/.config/x-api/.env"
+    if not HAVE_APP_AUTH:
+        return "Error: neither X_BEARER_TOKEN nor X_API_BASE is set. Check ~/.config/x-api/.env"
 
     try:
         tweet = await read_tweet(url_or_id, BEARER_TOKEN)
@@ -58,8 +60,8 @@ async def search_tweets_tool(query: str, max_results: int = 10) -> str:
         query: Search query (e.g. "Python asyncio", "from:karpathy -is:retweet")
         max_results: Number of results to return (10-100, default 10)
     """
-    if not BEARER_TOKEN:
-        return "Error: X_BEARER_TOKEN not set. Check ~/.config/x-api/.env"
+    if not HAVE_APP_AUTH:
+        return "Error: neither X_BEARER_TOKEN nor X_API_BASE is set. Check ~/.config/x-api/.env"
 
     try:
         tweets = await search_tweets(query, BEARER_TOKEN, max_results)
@@ -92,8 +94,8 @@ async def search_all_tweets_tool(
         start_time: Optional ISO 8601 start time, e.g. "2026-01-01T00:00:00Z"
         end_time: Optional ISO 8601 end time, e.g. "2026-06-01T00:00:00Z"
     """
-    if not BEARER_TOKEN:
-        return "Error: X_BEARER_TOKEN not set. Check ~/.config/x-api/.env"
+    if not HAVE_APP_AUTH:
+        return "Error: neither X_BEARER_TOKEN nor X_API_BASE is set. Check ~/.config/x-api/.env"
 
     try:
         tweets = await search_all_tweets(query, BEARER_TOKEN, max_results, start_time, end_time)

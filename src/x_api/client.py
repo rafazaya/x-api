@@ -1,6 +1,7 @@
 """X API v2 client for tweet lookup."""
 
 import html
+import os
 import re
 from urllib.parse import urlparse
 
@@ -33,6 +34,20 @@ def extract_tweet_id(url_or_id: str) -> str:
         return match.group(1)
 
     raise ValueError(f"Could not extract tweet ID from: {url_or_id}")
+
+
+def _api_base() -> str:
+    """Where app-only calls (search, lookup) go.
+
+    Set X_API_BASE to a credential broker such as http://cachyminisforum:7480/x
+    and leave X_BEARER_TOKEN empty: the broker adds the token, so this process
+    never holds it. Read per call because server.py loads .env after import.
+    """
+    return os.environ.get("X_API_BASE", "https://api.x.com").rstrip("/")
+
+
+def _app_auth(bearer_token: str) -> dict:
+    return {"Authorization": f"Bearer {bearer_token}"} if bearer_token else {}
 
 
 TWEET_PARAMS = {
@@ -84,8 +99,8 @@ async def search_tweets(query: str, bearer_token: str, max_results: int = 10) ->
 
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            "https://api.x.com/2/tweets/search/recent",
-            headers={"Authorization": f"Bearer {bearer_token}"},
+            f"{_api_base()}/2/tweets/search/recent",
+            headers=_app_auth(bearer_token),
             params={
                 "query": query,
                 "max_results": max_results,
@@ -120,8 +135,8 @@ async def search_all_tweets(
 
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            "https://api.x.com/2/tweets/search/all",
-            headers={"Authorization": f"Bearer {bearer_token}"},
+            f"{_api_base()}/2/tweets/search/all",
+            headers=_app_auth(bearer_token),
             params=params,
         )
         resp.raise_for_status()
@@ -136,8 +151,8 @@ async def read_tweet(url_or_id: str, bearer_token: str) -> Tweet:
 
     async with httpx.AsyncClient() as client:
         resp = await client.get(
-            f"https://api.x.com/2/tweets/{tweet_id}",
-            headers={"Authorization": f"Bearer {bearer_token}"},
+            f"{_api_base()}/2/tweets/{tweet_id}",
+            headers=_app_auth(bearer_token),
             params=TWEET_PARAMS,
         )
         resp.raise_for_status()

@@ -40,6 +40,16 @@ chmod 600 ~/.config/x-api/.env
 
 Replace `your-bearer-token-here` with your actual token.
 
+#### Or: keep the token in a credential broker
+
+Any agent that can read `~/.config/x-api/.env` can read the token. To keep it out of reach, store it in a broker that adds the `Authorization` header itself (for example the `secretbroker` in [rafazaya/dotfiles](https://github.com/rafazaya/dotfiles)), then point the app-only calls at it instead of setting a token:
+
+```bash
+echo "X_API_BASE=http://cachyminisforum:7480/x" >> ~/.config/x-api/.env
+```
+
+With `X_API_BASE` set and `X_BEARER_TOKEN` absent, reads and searches go through the broker and this server never holds the token. Bookmarks still use the per-account OAuth tokens below and go to X directly.
+
 ## Installation
 
 ```bash
